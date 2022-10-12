@@ -26,7 +26,7 @@ UCLASS(ClassGroup = Voxel, meta = (BlueprintSpawnableComponent))
 class VOXEL_API UVoxelNoClippingComponent : public USceneComponent
 {
 	GENERATED_BODY()
-		
+
 public:
 	UVoxelNoClippingComponent();
 
@@ -54,15 +54,15 @@ public:
 	// If true, will move away from a point instead of upwards
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Default Behavior", meta = (EditCondition = "bEnableDefaultBehavior"))
 	bool bIsPlanet = false;
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Voxel - Default Behavior", meta = (EditCondition = "bEnableDefaultBehavior && bIsPlanet"))
 	FVector PlanetCenter = FVector::ZeroVector;
-	
+
 public:
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMoveTowardsSurface);
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnStopMovingTowardsSurface);
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTeleported);
-	
+
 	// Will be called when we're clipping, but no safe position can be found
 	// You can bind this to eg move the player upward
 	// When the player will be safe again, StopMovingTowardsSurface will be fired
@@ -88,6 +88,11 @@ public:
 		return true;
 	}
 
+	virtual void ProcessInsideSurface(
+		float deltaTime, bool bResultInsideSurface, TOptional<FIntVector> ClosestSafeLocation,
+		TWeakObjectPtr<AVoxelWorld> WorstVoxelWorld
+	);
+
 public:
 	// True if we are currently inside the voxel world surface
 	UPROPERTY(BlueprintReadOnly, Category = "Voxel")
@@ -97,6 +102,8 @@ protected:
 	//~ Begin UActorComponent Interface
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	//~ End UActorComponent Interface
+
+	void StartAsyncTask();
 
 private:
 	double LastTickTime = 0;
@@ -108,8 +115,6 @@ private:
 	};
 	TFuture<TArray<FAsyncResult>> AsyncResult;
 	TArray<TWeakObjectPtr<AVoxelWorld>> PendingVoxelWorlds;
-
-	void StartAsyncTask();
 
 	void BroadcastMoveTowardsSurface() const;
 	void BroadcastStopMovingTowardsSurface() const;

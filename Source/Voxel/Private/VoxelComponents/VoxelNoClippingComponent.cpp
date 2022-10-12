@@ -22,7 +22,7 @@ UVoxelNoClippingComponent::UVoxelNoClippingComponent()
 void UVoxelNoClippingComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	VOXEL_FUNCTION_COUNTER();
-	
+
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 	const double Time = FPlatformTime::Seconds();
@@ -37,7 +37,7 @@ void UVoxelNoClippingComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 	if (!AsyncResult.IsValid() || !AsyncResult.IsReady())
 	{
 		// Search is not started/not complete
-		if (bIsInsideSurface)
+		if (bIsInsideSurface && bEnableDefaultBehavior)
 		{
 			// We should have a search in progress already
 			ensure(AsyncResult.IsValid());
@@ -49,10 +49,10 @@ void UVoxelNoClippingComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 
 	const TArray<FAsyncResult> Results = AsyncResult.Get();
 	const TArray<TWeakObjectPtr<AVoxelWorld>> VoxelWorlds = MoveTemp(PendingVoxelWorlds);
-	
+
 	AsyncResult.Reset();
 	PendingVoxelWorlds.Reset();
-	
+
 	if (!ensure(Results.Num() == VoxelWorlds.Num()) || !ensure(Results.Num() > 0))
 	{
 		return;
@@ -76,8 +76,24 @@ void UVoxelNoClippingComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 		// TODO smarter selection when we are inside multiple voxel worlds?
 		break;
 	}
-	
-	if (!WorstResult.bInsideSurface)
+
+	if (WorstResult.bInsideSurface) {
+		if (!WorstVoxelWorld.IsValid() || !WorstVoxelWorld->IsCreated())
+		{
+			LOG_VOXEL(Warning, TEXT("NoClippingComponent: Clearing task result as voxel world is now invalid"));
+			WorstVoxelWorld = nullptr;
+			WorstResult.ClosestSafeLocation.Reset();
+		}
+	}
+
+	ProcessInsideSurface(DeltaTime, WorstResult.bInsideSurface, WorstResult.ClosestSafeLocation, WorstVoxelWorld);
+}
+
+void UVoxelNoClippingComponent::ProcessInsideSurface(
+	float deltaTime, bool bResultInsideSurface, TOptional<FIntVector> ClosestSafeLocation,
+	TWeakObjectPtr<AVoxelWorld> WorstVoxelWorld
+) {
+	if (!bResultInsideSurface)
 	{
 		// We're safe
 		if (bIsInsideSurface)
@@ -87,24 +103,17 @@ void UVoxelNoClippingComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 		}
 		return;
 	}
-	
-	if (!WorstVoxelWorld.IsValid() || !WorstVoxelWorld->IsCreated())
-	{
-		LOG_VOXEL(Warning, TEXT("NoClippingComponent: Clearing task result as voxel world is now invalid"));
-		WorstVoxelWorld = nullptr;
-		WorstResult.ClosestSafeLocation.Reset();
-	}
 
 	// We're not safe!
-	if (WorstResult.ClosestSafeLocation)
+	if (ClosestSafeLocation)
 	{
 		// We found a safe location: teleport there
-		
-		const FVector NewPosition = WorstVoxelWorld->LocalToGlobal(WorstResult.ClosestSafeLocation.GetValue());
+
+		const FVector NewPosition = WorstVoxelWorld->LocalToGlobal(ClosestSafeLocation.GetValue());
 		const FVector Delta = NewPosition - GetComponentLocation();
 
 		AActor& Owner = *GetOwner();
-		
+
 		auto* Root = Owner.GetRootComponent();
 		if (!ensure(Root))
 		{
@@ -115,7 +124,7 @@ void UVoxelNoClippingComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 		Root->MoveComponent(Delta, Owner.GetActorQuat(), false, nullptr, MOVECOMP_NoFlags, ETeleportType::ResetPhysics);
 
 		BroadcastOnTeleported();
-		
+
 		// We're safe
 		if (bIsInsideSurface)
 		{
@@ -129,7 +138,7 @@ void UVoxelNoClippingComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 
 		// Start a task now, so we can read the result as soon as possible
 		StartAsyncTask();
-		
+
 		LOG_VOXEL(Log, TEXT("NoClippingComponent: could not find a safe location, firing MoveTowardsSurface. SearchRange: %d"), SearchRange);
 		BroadcastMoveTowardsSurface();
 	}
@@ -226,7 +235,7 @@ void UVoxelNoClippingComponent::BroadcastMoveTowardsSurface() const
 			CharacterMovement->AddImpulse(Direction * Speed, true);
 		}
 	}
-	
+
 	MoveTowardsSurface.Broadcast();
 }
 
@@ -290,10 +299,10 @@ void UVoxelNoClippingComponent::ResetVelocity(UCharacterMovementComponent& Chara
 UVoxelNoClippingComponent::FAsyncResult UVoxelNoClippingComponent::AsyncTask(const FVoxelData& Data, const FVoxelVector& ComponentLocation, int32 SearchRange)
 {
 	VOXEL_ASYNC_FUNCTION_COUNTER();
-	
+
 	const FVoxelIntBox Bounds = FVoxelIntBox(ComponentLocation).Extend(FMath::Max(1, SearchRange));
 	FVoxelReadScopeLock Lock(Data, Bounds, FUNCTION_FNAME);
-	
+
 	const FVoxelConstDataAccelerator Accelerator(Data);
 	for (auto& Neighbor : FVoxelUtilities::GetNeighbors(ComponentLocation))
 	{
@@ -336,10 +345,10 @@ UVoxelNoClippingComponent::FAsyncResult UVoxelNoClippingComponent::AsyncTask(con
 			}
 		}
 	}
-	
+
 	const double EndTime = FPlatformTime::Seconds();
 
 	LOG_VOXEL(Verbose, TEXT("NoClippingComponent search took %.3fms. Success: %s"), (EndTime - StartTime) * 1000, *LexToString(Result.ClosestSafeLocation.IsSet()));
-	
+
 	return Result;
 }
