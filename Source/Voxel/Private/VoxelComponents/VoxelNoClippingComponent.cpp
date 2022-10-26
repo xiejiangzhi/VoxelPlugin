@@ -40,7 +40,7 @@ void UVoxelNoClippingComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 		if (bIsInsideSurface && bEnableDefaultBehavior)
 		{
 			// We should have a search in progress already
-			ensure(AsyncResult.IsValid());
+			// ensure(AsyncResult.IsValid());
 			// Always fire the event on tick
 			BroadcastMoveTowardsSurface();
 		}

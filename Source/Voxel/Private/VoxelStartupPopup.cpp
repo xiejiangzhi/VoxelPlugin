@@ -21,7 +21,7 @@ void FVoxelStartupPopup::ShowPopup()
 {
 	int32 VoxelPluginVersion = 0;
 	GConfig->GetInt(TEXT("VoxelPlugin"), TEXT("VoxelPluginVersion"), VoxelPluginVersion, GEditorPerProjectIni);
-	
+
 	const auto OpenLink = [=](const FString& Url)
 	{
 		FString Error;
@@ -45,16 +45,16 @@ void FVoxelStartupPopup::ShowPopup()
 		Notification.Message = "Voxel Plugin has been updated to 1.2!";
 		Notification.Duration = 1e6f;
 		Notification.OnClose = FSimpleDelegate::CreateLambda(Close);
-		
+
 		auto& Button = Notification.Buttons.Emplace_GetRef();
 		Button.Text = "Show Release Notes";
 		Button.Tooltip = "See the latest plugin release notes";
-		Button.OnClick = FSimpleDelegate::CreateLambda([=]() 
+		Button.OnClick = FSimpleDelegate::CreateLambda([=]()
 		{
 			OpenLink("https://releases.voxelplugin.com");
 			Close();
 		});
-		
+
 		FVoxelMessages::ShowNotification(Notification);
 	}
 
@@ -96,7 +96,7 @@ void FVoxelStartupPopup::ShowPopup()
 				OpenLink("https://pro.voxelplugin.com");
 			});
 		}
-		
-		FVoxelMessages::ShowNotification(Notification);
+
+		// FVoxelMessages::ShowNotification(Notification);
 	}
 }
