@@ -27,10 +27,13 @@ class VOXEL_API UVoxelGenerator : public UObject
 	GENERATED_BODY()
 
 public:
+	UFUNCTION(BlueprintCallable, Category = "Voxel|VoxelGenerator")
+	void K2_ApplyParameters(const TMap<FName, FString>& Parameters) { ApplyParameters(Parameters); }
+
 	//~ Begin UVoxelGenerator Interface
 	virtual void ApplyParameters(const TMap<FName, FString>& Parameters);
 	virtual TArray<FVoxelGeneratorParameter> GetParameters() const;
-	
+
 	virtual TVoxelSharedRef<FVoxelGeneratorInstance> GetInstance(const TMap<FName, FString>& Parameters);
 	virtual TVoxelSharedRef<FVoxelGeneratorInstance> GetInstance();
 
@@ -52,7 +55,7 @@ public:
 	virtual TVoxelSharedRef<FVoxelTransformableGeneratorInstance> GetTransformableInstance(const TMap<FName, FString>& Parameters);
 	virtual TVoxelSharedRef<FVoxelTransformableGeneratorInstance> GetTransformableInstance();
 	//~ End UVoxelTransformableGenerator Interface
-	
+
 	//~ Begin UVoxelGenerator Interface
 	virtual TVoxelSharedRef<FVoxelGeneratorInstance> GetInstance(const TMap<FName, FString>& Parameters) override;
 	virtual TVoxelSharedRef<FVoxelGeneratorInstance> GetInstance() override;
